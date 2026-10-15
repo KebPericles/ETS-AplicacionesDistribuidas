@@ -1,0 +1,17 @@
+{
+  "name": "helpdesk-mern",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Aplicacion HelpDesk MERN para la gestion segura de incidencias.",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace server",
+    "start": "npm run start --workspace server",
+    "test": "npm run test --workspace server",
+    "test:client": "npm run test --workspace client",
+    "seed": "npm run seed --workspace server"
+  }
+}

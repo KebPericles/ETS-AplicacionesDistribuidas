@@ -1,0 +1,21 @@
+# Checklist de aceptación
+
+- [x] Autenticación, cookie HttpOnly y `/api/auth/me`.
+- [x] Roles y permisos en servidor.
+- [x] Tickets, visibilidad, filtros, búsqueda, ordenamiento y paginación backend.
+- [x] Flujo de estados con historial y transacciones.
+- [x] Comentarios y notas internas protegidos.
+- [x] Asignación y autoasignación concurrente.
+- [x] Métricas mediante agregaciones MongoDB.
+- [x] Gestión administrativa de usuarios.
+- [x] Frontend React, rutas protegidas, métricas y responsive.
+- [x] Validación y errores uniformes.
+- [x] Helmet, CORS, rate limiting, Origin y variables fuera del repositorio.
+- [x] 11 pruebas de integración API.
+- [x] 4 pruebas de componentes frontend.
+- [x] Seed reproducible documentado.
+- [x] OpenAPI.
+- [x] Arquitectura, matriz de permisos y guion de demostración.
+- [ ] Ejecutar seed contra MongoDB local real en este entorno.
+- [ ] Registrar resultados reales de `explain()` en este entorno.
+- [ ] Completar una demostración manual E2E con tres sesiones reales.

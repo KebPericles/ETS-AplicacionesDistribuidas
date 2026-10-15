@@ -1,0 +1,184 @@
+openapi: 3.0.3
+info:
+  title: HelpDesk API
+  version: 0.1.0
+  description: API REST para gestion segura de incidencias de soporte.
+servers:
+  - url: http://localhost:3000
+paths:
+  /api/auth/register:
+    post:
+      summary: Registrar cliente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterInput' }
+      responses:
+        '201': { description: Cliente creado }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '409': { description: Correo ya registrado }
+  /api/auth/login:
+    post:
+      summary: Iniciar sesion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginInput' }
+      responses:
+        '200': { description: Sesion creada mediante cookie HttpOnly }
+        '401': { description: Credenciales invalidas }
+  /api/auth/logout:
+    post:
+      summary: Cerrar sesion
+      security: [{ cookieAuth: [] }]
+      responses: { '204': { description: Cookie eliminada } }
+  /api/auth/me:
+    get:
+      summary: Recuperar usuario autenticado
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: Sesion actual } }
+  /api/tickets:
+    get:
+      summary: Listar tickets visibles
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: pageSize, in: query, schema: { type: integer, minimum: 1, maximum: 50 } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/Status' } }
+        - { name: priority, in: query, schema: { $ref: '#/components/schemas/Priority' } }
+        - { name: category, in: query, schema: { $ref: '#/components/schemas/Category' } }
+        - { name: q, in: query, schema: { type: string, maxLength: 100 } }
+      responses: { '200': { description: Lista paginada } }
+    post:
+      summary: Crear ticket
+      security: [{ cookieAuth: [] }]
+      description: Permitido para cliente y admin.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TicketInput' }
+      responses:
+        '201': { description: Ticket creado }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/tickets/stats:
+    get:
+      summary: Obtener metricas agregadas
+      security: [{ cookieAuth: [] }]
+      description: Permitido para agente y admin; usa agregacion MongoDB.
+      responses: { '200': { description: Metricas por estado, prioridad, resolucion y carga } }
+  /api/tickets/{id}:
+    get:
+      summary: Obtener detalle visible, historial y comentarios
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/TicketId' }]
+      responses:
+        '200': { description: Detalle del ticket }
+        '404': { description: Recurso no visible o inexistente }
+  /api/tickets/{id}/estado:
+    patch:
+      summary: Cambiar estado respetando transiciones
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/TicketId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [status], properties: { status: { $ref: '#/components/schemas/Status' } } }
+      responses:
+        '200': { description: Estado actualizado e historial registrado }
+        '409': { description: Transicion no permitida }
+  /api/tickets/{id}/asignar:
+    patch:
+      summary: Asignar o autoasignar ticket
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/TicketId' }]
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, properties: { agentId: { type: string, nullable: true } } }
+      responses:
+        '200': { description: Ticket asignado }
+        '409': { description: Carrera de autoasignacion perdida }
+  /api/tickets/{id}/comentarios:
+    get:
+      summary: Listar comentarios visibles
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/TicketId' }]
+      responses: { '200': { description: Comentarios filtrados por rol } }
+    post:
+      summary: Crear comentario o nota interna
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/TicketId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [body], properties: { body: { type: string, minLength: 1, maxLength: 5000 }, internal: { type: boolean } } }
+      responses: { '201': { description: Comentario creado } }
+  /api/users:
+    get:
+      summary: Listar usuarios
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: Usuarios sin contrasenas, solo admin } }
+  /api/users/{id}:
+    patch:
+      summary: Cambiar rol o activar cuenta
+      security: [{ cookieAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, properties: { role: { type: string, enum: [cliente, agente, admin] }, active: { type: boolean } } }
+      responses: { '200': { description: Usuario actualizado }, '403': { $ref: '#/components/responses/Forbidden' } }
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: helpdesk_token
+  parameters:
+    TicketId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+  responses:
+    Forbidden:
+      description: Rol insuficiente
+    ValidationError:
+      description: Datos invalidos
+  schemas:
+    RegisterInput:
+      type: object
+      required: [name, email, password]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 100 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8, maxLength: 128 }
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8, maxLength: 128 }
+    TicketInput:
+      type: object
+      required: [title, description, category, priority]
+      properties:
+        title: { type: string, minLength: 3, maxLength: 160 }
+        description: { type: string, minLength: 10, maxLength: 5000 }
+        category: { $ref: '#/components/schemas/Category' }
+        priority: { $ref: '#/components/schemas/Priority' }
+    Category:
+      type: string
+      enum: [hardware, software, red, cuenta, otro]
+    Priority:
+      type: string
+      enum: [baja, media, alta, critica]
+    Status:
+      type: string
+      enum: [abierto, en_progreso, resuelto, cerrado]
